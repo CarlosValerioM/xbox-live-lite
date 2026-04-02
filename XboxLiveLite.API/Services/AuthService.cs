@@ -9,7 +9,7 @@ namespace XboxLiveLite.Api.Services;
 
 public class AuthService
 {
-    private readonly string _secret = "THIS_IS_SUPER_SECRET_KEY_12345";
+    private readonly string _secret = "THIS_IS_A_VERY_SECURE_SECRET_KEY_XBOXLIVELITE";
 
     public Player Login(string gamertag)
     {
