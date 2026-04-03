@@ -29,4 +29,9 @@ app.MapPost("/auth/login", (LoginRequest request, AuthService authService) =>
     });
 });
 
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "Healthy",
+    timestamp = DateTime.UtcNow
+}));
 app.Run();
