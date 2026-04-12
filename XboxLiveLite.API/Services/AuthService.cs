@@ -11,15 +11,21 @@ public class AuthService
 {
     private readonly string _secret = "THIS_IS_A_VERY_SECURE_SECRET_KEY_XBOXLIVELITE";
 
-    public Player Login(string gamertag)
+    private readonly PlayerRepository _repo;
+
+    public AuthService(PlayerRepository repo)
     {
-        var player = InMemoryDb.Players
-            .FirstOrDefault(p => p.Gamertag == gamertag);
+        _repo = repo;
+    }
+
+    public async Task<Player> LoginAsync(string gamertag)
+    {
+        var player = await _repo.GetByGamertagAsync(gamertag);
 
         if (player == null)
         {
             player = new Player { Gamertag = gamertag };
-            InMemoryDb.Players.Add(player);
+            player = await _repo.CreatePlayerAsync(player);
         }
 
         return player;

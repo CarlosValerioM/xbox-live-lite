@@ -1,0 +1,11 @@
+# Config sensibles
+appsettings.json
+appsettings.Development.json
+
+# Build
+bin/
+obj/
+
+# VS / VSCode
+.vs/
+.vscode/

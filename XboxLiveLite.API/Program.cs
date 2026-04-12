@@ -4,6 +4,7 @@ using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using XboxLiveLite.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<PlayerRepository>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -62,12 +64,12 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapPost("/auth/login", (LoginRequest request, AuthService authService) =>
+app.MapPost("/auth/login", async (LoginRequest request, AuthService authService) =>
 {
     if (string.IsNullOrWhiteSpace(request.Gamertag))
         return Results.BadRequest("Gamertag is required");
 
-    var player = authService.Login(request.Gamertag);
+    var player = await authService.LoginAsync(request.Gamertag);
     var token = authService.GenerateToken(player);
 
     return Results.Ok(new
