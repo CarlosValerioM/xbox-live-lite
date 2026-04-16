@@ -39,6 +39,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<PlayerRepository>();
+builder.Services.AddSingleton<ISessionService, SessionService>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -80,29 +81,61 @@ app.MapPost("/auth/login", async (LoginRequest request, AuthService authService)
     });
 });
 
-app.MapPost("/sessions", (string playerId) =>
+app.MapPost("/sessions", (string playerId, ISessionService sessionService) =>
 {
     if (string.IsNullOrWhiteSpace(playerId))
         return Results.BadRequest("playerId is required");
 
-    var session = new Session
-    {
-        HostPlayerId = playerId,
-        PlayerIds = new List<string> { playerId }
-    };
-
-    SessionStore.Sessions.Add(session);
+    var session = sessionService.CreateSession(playerId);
 
     return Results.Ok(session);
 });
 
-app.MapGet("/sessions/{id}", (string id) =>
+app.MapGet("/sessions/{id}", (string id, ISessionService sessionService) =>
 {
-    var session = SessionStore.Sessions
-        .FirstOrDefault(s => s.Id == id);
+    var session = sessionService.GetSession(id);
 
     if (session == null)
         return Results.NotFound("Session not found");
+
+    return Results.Ok(session);
+});
+app.MapPost("/sessions/{id}/join", (string id, string playerId, ISessionService sessionService) =>
+{
+    if (string.IsNullOrWhiteSpace(playerId))
+        return Results.BadRequest("playerId is required");
+
+    var session = sessionService.JoinSession(id, playerId);
+
+    if (session == null)
+        return Results.NotFound("Session not found");
+
+    return Results.Ok(session);
+});
+
+app.MapPost("/sessions/{id}/start", (string id, ISessionService sessionService) =>
+{
+    var session = sessionService.GetSession(id);
+
+    if (session == null)
+        return Results.NotFound("Session not found");
+
+    if (session.Status != SessionStatus.Lobby)
+        return Results.BadRequest("Game already started");
+
+    session.Status = SessionStatus.InGame;
+
+    return Results.Ok(session);
+});
+
+app.MapPost("/sessions/{id}/end", (string id, ISessionService sessionService) =>
+{
+    var session = sessionService.GetSession(id);
+
+    if (session == null)
+        return Results.NotFound("Session not found");
+
+    session.Status = SessionStatus.Finished;
 
     return Results.Ok(session);
 });

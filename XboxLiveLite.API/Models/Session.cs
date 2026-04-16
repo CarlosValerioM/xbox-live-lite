@@ -12,4 +12,13 @@ public class Session
     public List<string> PlayerIds { get; set; } = new();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public SessionStatus Status { get; set; } = SessionStatus.Lobby;
+}
+
+public enum SessionStatus
+{
+    Lobby,
+    InGame,
+    Finished
 }
