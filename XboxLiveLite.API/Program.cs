@@ -7,8 +7,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using XboxLiveLite.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new Exception("JWT Key is missing in configuration");
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<PlayerRepository>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<SessionRepository>();
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -36,11 +42,6 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<PlayerRepository>();
-builder.Services.AddSingleton<ISessionService, SessionService>();
-
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -52,7 +53,7 @@ builder.Services.AddAuthentication("Bearer")
             ValidIssuer = "XboxLiveLite",
             ValidAudience = "XboxLiveLiteUsers",
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECURE_SECRET_KEY_XBOXLIVELITE"))
+                Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
@@ -81,61 +82,35 @@ app.MapPost("/auth/login", async (LoginRequest request, AuthService authService)
     });
 });
 
-app.MapPost("/sessions", (string playerId, ISessionService sessionService) =>
+app.MapPost("/sessions", async (string playerId, ISessionService sessionService) =>
 {
     if (string.IsNullOrWhiteSpace(playerId))
         return Results.BadRequest("playerId is required");
 
-    var session = sessionService.CreateSession(playerId);
+    var session = await sessionService.CreateSession(playerId);
 
     return Results.Ok(session);
 });
 
-app.MapGet("/sessions/{id}", (string id, ISessionService sessionService) =>
+app.MapGet("/sessions/{id}", async (string id, ISessionService sessionService) =>
 {
-    var session = sessionService.GetSession(id);
+    var session = await sessionService.GetSession(id);
 
     if (session == null)
         return Results.NotFound("Session not found");
 
     return Results.Ok(session);
 });
-app.MapPost("/sessions/{id}/join", (string id, string playerId, ISessionService sessionService) =>
+
+app.MapPost("/sessions/{id}/join", async (string id, string playerId, ISessionService sessionService) =>
 {
     if (string.IsNullOrWhiteSpace(playerId))
         return Results.BadRequest("playerId is required");
 
-    var session = sessionService.JoinSession(id, playerId);
+    var session = await sessionService.JoinSession(id, playerId);
 
     if (session == null)
-        return Results.NotFound("Session not found");
-
-    return Results.Ok(session);
-});
-
-app.MapPost("/sessions/{id}/start", (string id, ISessionService sessionService) =>
-{
-    var session = sessionService.GetSession(id);
-
-    if (session == null)
-        return Results.NotFound("Session not found");
-
-    if (session.Status != SessionStatus.Lobby)
-        return Results.BadRequest("Game already started");
-
-    session.Status = SessionStatus.InGame;
-
-    return Results.Ok(session);
-});
-
-app.MapPost("/sessions/{id}/end", (string id, ISessionService sessionService) =>
-{
-    var session = sessionService.GetSession(id);
-
-    if (session == null)
-        return Results.NotFound("Session not found");
-
-    session.Status = SessionStatus.Finished;
+        return Results.NotFound("Session not found or not joinable");
 
     return Results.Ok(session);
 });

@@ -5,14 +5,21 @@ namespace XboxLiveLite.Api.Services;
 
 public interface ISessionService
 {
-    Session CreateSession(string playerId);
-    Session? GetSession(string id);
-    Session? JoinSession(string sessionId, string playerId);
+    Task<Session> CreateSession(string playerId);
+    Task<Session?> GetSession(string id);
+    Task<Session?> JoinSession(string sessionId, string playerId);
 }
 
 public class SessionService : ISessionService
 {
-    public Session CreateSession(string playerId)
+    private readonly SessionRepository _repo;
+
+    public SessionService(SessionRepository repo)
+    {
+        _repo = repo;
+    }
+
+    public async Task<Session> CreateSession(string playerId)
     {
         var session = new Session
         {
@@ -20,20 +27,17 @@ public class SessionService : ISessionService
             PlayerIds = new List<string> { playerId }
         };
 
-        SessionStore.Sessions.Add(session);
-
-        return session;
+        return await _repo.CreateAsync(session);
     }
 
-    public Session? GetSession(string id)
+    public async Task<Session?> GetSession(string id)
     {
-        return SessionStore.Sessions
-            .FirstOrDefault(s => s.Id == id);
+        return await _repo.GetByIdAsync(id);
     }
-    public Session? JoinSession(string sessionId, string playerId)
+
+    public async Task<Session?> JoinSession(string sessionId, string playerId)
     {
-        var session = SessionStore.Sessions
-            .FirstOrDefault(s => s.Id == sessionId);
+        var session = await _repo.GetByIdAsync(sessionId);
 
         if (session == null)
             return null;
@@ -41,11 +45,9 @@ public class SessionService : ISessionService
         if (session.Status != SessionStatus.Lobby)
             return null;
 
-        if (session.PlayerIds.Contains(playerId))
-            return session;
+        if (!session.PlayerIds.Contains(playerId))
+            session.PlayerIds.Add(playerId);
 
-        session.PlayerIds.Add(playerId);
-
-        return session;
+        return await _repo.UpdateAsync(session);
     }
 }

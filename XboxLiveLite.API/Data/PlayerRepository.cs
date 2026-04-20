@@ -11,7 +11,7 @@ public class PlayerRepository
     {
         var client = new CosmosClient(config["CosmosDb:ConnectionString"]);
         var database = client.GetDatabase(config["CosmosDb:DatabaseName"]);
-        _container = database.GetContainer(config["CosmosDb:ContainerName"]);
+        _container = database.GetContainer(config["CosmosDb:PlayersContainer"]);
     }
 
     public async Task<Player> CreatePlayerAsync(Player player)
